@@ -514,7 +514,7 @@ static void scan_on_read_img(FpDevice *dev, guint8 *data, guint16 len,
 
     g_print("Signal IMG Capture\n");
     fpi_image_device_image_captured(img_dev, img);
-    save_image_to_pgm(img, "finger.pgm");
+    save_image_to_pgm(img, "/root/captured.pgm");
 
     g_print("Next State\n");
     fpi_ssm_next_state(ssm);
