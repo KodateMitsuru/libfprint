@@ -327,6 +327,7 @@ enum SCAN_STAGES {
   SCAN_STAGE_RESET_SCANNER2,
   SCAN_STAGE_SWITCH_TO_FDT_UP_NO_REPLY,
   SCAN_STAGE_SWITCH_TO_FDT_UP,
+  SCAN_STAGE_SWITCH_TO_IDLE_MODE,
   SCAN_STAGE_QUERY_MCU_TURN_OFF_LIGHT,
   SCAN_STAGE_SWITCH_TO_SLEEP_MODE,
   SCAN_STAGE_SWITCH_TO_FDT_DONE,
@@ -503,7 +504,7 @@ static void scan_on_read_img(FpDevice *dev, guint8 *data, guint16 len,
     g_slist_foreach(raw_frames, (GFunc)process_frame, &pinfo);
     frames = g_slist_reverse(frames);
 
-    g_print("MOVEMENT EST\n");
+    g_print("\n");
     fpi_do_movement_estimation(&assembly_ctx, frames);
     g_print("MOVEMENT EST DOOONEE\n");
     FpImage *img = fpi_assemble_frames(&assembly_ctx, frames);
@@ -514,7 +515,7 @@ static void scan_on_read_img(FpDevice *dev, guint8 *data, guint16 len,
 
     g_print("Signal IMG Capture\n");
     fpi_image_device_image_captured(img_dev, img);
-    save_image_to_pgm(img, "/root/captured.pgm");
+    save_image_to_pgm(img, "/tmp/captured.pgm");
 
     g_print("Next State\n");
     fpi_ssm_next_state(ssm);
@@ -689,6 +690,10 @@ static void scan_run_state(FpiSsm *ssm, FpDevice *dev) {
       goodix_send_mcu_switch_to_fdt_up(dev, (guint8 *)fdt_switch_state_up2_55X4,
                                        sizeof(fdt_switch_state_up_55X4), NULL,
                                        check_none_cmd, ssm);
+      break;
+    case SCAN_STAGE_SWITCH_TO_IDLE_MODE:
+      g_print("SWITCH TO IDLE MODE\n");
+      goodix_send_mcu_switch_to_idle_mode(dev, 20, check_idle, ssm);
       break;
     case SCAN_STAGE_SWITCH_TO_SLEEP_MODE:
       g_print("SWITCH TO SLEEP MODE\n");
