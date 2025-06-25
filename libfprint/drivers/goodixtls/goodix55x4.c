@@ -18,6 +18,10 @@
 // License along with this library; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "fp-device.h"
 #include "fp-image-device.h"
 #include "fp-image.h"
@@ -28,12 +32,10 @@
 #include "fpi-ssm.h"
 #include "glibconfig.h"
 #include "gusb/gusb-device.h"
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
 #define FP_COMPONENT "goodixtls55x4"
 
 #include <glib.h>
+#include <math.h>
 #include <string.h>
 
 #include "drivers_api.h"
@@ -41,17 +43,15 @@
 #include "goodix55x4.h"
 #include "goodix_proto.h"
 
-#include <math.h>
-
 #define GOODIX55X4_WIDTH 64
 #define GOODIX55X4_HEIGHT 80
 #define GOODIX55X4_SCAN_WIDTH 64
 #define GOODIX55X4_FRAME_SIZE (GOODIX55X4_WIDTH * GOODIX55X4_HEIGHT)
 // For every 4 pixels there are 6 bytes and there are 8 extra start bytes and 5
 // extra end
-#define GOODIX55X4_RAW_FRAME_SIZE                                              \
+#define GOODIX55X4_RAW_FRAME_SIZE \
   (GOODIX55X4_HEIGHT * GOODIX55X4_SCAN_WIDTH) / 4 * 6
-#define GOODIX55X4_CAP_FRAMES 1 // Number of frames we capture per swipe
+#define GOODIX55X4_CAP_FRAMES 1  // Number of frames we capture per swipe
 
 typedef unsigned short Goodix55X4Pix;
 
@@ -66,7 +66,7 @@ struct _FpiDeviceGoodixTls55X4 {
 };
 
 G_DECLARE_FINAL_TYPE(FpiDeviceGoodixTls55X4, fpi_device_goodixtls55x4, FPI,
-                         DEVICE_GOODIXTLS55X4, FpiDeviceGoodixTls);
+                     DEVICE_GOODIXTLS55X4, FpiDeviceGoodixTls);
 
 G_DEFINE_TYPE(FpiDeviceGoodixTls55X4, fpi_device_goodixtls55x4,
               FPI_TYPE_DEVICE_GOODIXTLS);
@@ -104,7 +104,7 @@ static void check_firmware_version(FpDevice *dev, gchar *firmware,
   g_print("%s\n", firmware);
 
   if (!(strcmp(firmware, GOODIX_55X4_FIRMWARE_VERSION) ||
-	  strcmp(firmware, GOODIX_55X4_FIRMWARE_VERSION2))) {
+        strcmp(firmware, GOODIX_55X4_FIRMWARE_VERSION2))) {
     g_set_error(&error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA,
                 "Invalid device firmware: \"%s\"", firmware);
     fpi_ssm_mark_failed(user_data, error);
@@ -184,7 +184,6 @@ static void check_preset_psk_read(FpDevice *dev, gboolean success,
   fpi_ssm_next_state(user_data);
 }
 static void check_idle(FpDevice *dev, gpointer user_data, GError *err) {
-
   if (err) {
     fpi_ssm_mark_failed(user_data, err);
     return;
@@ -230,65 +229,64 @@ static void check_mcu_pov_image(FpDevice *dev, gboolean success,
 }
 
 static void activate_run_state(FpiSsm *ssm, FpDevice *dev) {
-
   switch (fpi_ssm_get_cur_state(ssm)) {
-  case ACTIVATE_READ_AND_NOP:
-    g_print("Read and NO OP\n");
-    // Nop seems to clear the previous command buffer. But we are
-    // unable to do so.
-    goodix_start_read_loop(dev);
-    goodix_send_nop(dev, check_none, ssm);
-    break;
+    case ACTIVATE_READ_AND_NOP:
+      g_print("Read and NO OP\n");
+      // Nop seems to clear the previous command buffer. But we are
+      // unable to do so.
+      goodix_start_read_loop(dev);
+      goodix_send_nop(dev, check_none, ssm);
+      break;
 
-  case ACTIVATE_ENABLE_CHIP:
-    g_print("Enable Chip\n");
-    goodix_send_enable_chip(dev, TRUE, check_none, ssm);
-    break;
+    case ACTIVATE_ENABLE_CHIP:
+      g_print("Enable Chip\n");
+      goodix_send_enable_chip(dev, TRUE, check_none, ssm);
+      break;
 
-  case ACTIVATE_NOP:
-    g_print("NO OP\n");
-    goodix_send_nop(dev, check_none, ssm);
-    break;
+    case ACTIVATE_NOP:
+      g_print("NO OP\n");
+      goodix_send_nop(dev, check_none, ssm);
+      break;
 
-  case ACTIVATE_CHECK_FW_VER:
-    g_print("Checking FW\n");
-    goodix_send_firmware_version(dev, check_firmware_version, ssm);
-    break;
+    case ACTIVATE_CHECK_FW_VER:
+      g_print("Checking FW\n");
+      goodix_send_firmware_version(dev, check_firmware_version, ssm);
+      break;
 
-  case ACTIVATE_CHECK_PSK:
-    g_print("Checking PSK\n");
-    goodix_send_preset_psk_read(dev, GOODIX_55X4_PSK_FLAGS, 32,
-                                check_preset_psk_read, ssm);
-    break;
+    case ACTIVATE_CHECK_PSK:
+      g_print("Checking PSK\n");
+      goodix_send_preset_psk_read(dev, GOODIX_55X4_PSK_FLAGS, 32,
+                                  check_preset_psk_read, ssm);
+      break;
 
-  case ACTIVATE_RESET:
-    g_print("Reset Device\n");
-    goodix_send_reset(dev, TRUE, 20, check_reset, ssm);
-    break;
+    case ACTIVATE_RESET:
+      g_print("Reset Device\n");
+      goodix_send_reset(dev, TRUE, 20, check_reset, ssm);
+      break;
 
-  case ACTIVATE_SET_MCU_IDLE:
-    g_print("Device IDLE\n");
-    goodix_send_mcu_switch_to_idle_mode(dev, 20, check_idle, ssm);
-    break;
+    case ACTIVATE_SET_MCU_IDLE:
+      g_print("Device IDLE\n");
+      goodix_send_mcu_switch_to_idle_mode(dev, 20, check_idle, ssm);
+      break;
 
-    // case ACTIVATE_SET_ODP:
-    //     goodix_send_read_otp(dev, read_otp_callback, ssm);
-    //     break;
+      // case ACTIVATE_SET_ODP:
+      //     goodix_send_read_otp(dev, read_otp_callback, ssm);
+      //     break;
 
-  case ACTIVATE_SET_MCU_CONFIG:
-    g_print("Uploading Device Config\n");
-    goodix_send_upload_config_mcu(dev, goodix_55x4_config,
-                                  sizeof(goodix_55x4_config), NULL,
-                                  check_config_upload, ssm);
-    break;
+    case ACTIVATE_SET_MCU_CONFIG:
+      g_print("Uploading Device Config\n");
+      goodix_send_upload_config_mcu(dev, goodix_55x4_config,
+                                    sizeof(goodix_55x4_config), NULL,
+                                    check_config_upload, ssm);
+      break;
 
-    // case ACTIVATE_SET_POWERDOWN_SCAN_FREQUENCY:
-    //     g_print("Powerdown Scan Freq\n");
-    //     /*goodix_send_set_powerdown_scan_frequency(
-    //         dev, 100, check_powerdown_scan_freq, ssm);*/
-    //     //goodix_send_drv_state(dev, check_powerdown_scan_freq, ssm);
-    //     fpi_ssm_next_state(ssm);
-    //     break;
+      // case ACTIVATE_SET_POWERDOWN_SCAN_FREQUENCY:
+      //     g_print("Powerdown Scan Freq\n");
+      //     /*goodix_send_set_powerdown_scan_frequency(
+      //         dev, 100, check_powerdown_scan_freq, ssm);*/
+      //     //goodix_send_drv_state(dev, check_powerdown_scan_freq, ssm);
+      //     fpi_ssm_next_state(ssm);
+      //     break;
   }
 }
 
@@ -321,15 +319,15 @@ static void activate_complete(FpiSsm *ssm, FpDevice *dev, GError *error) {
 // ---- SCAN SECTION START ----
 
 enum SCAN_STAGES {
+  SCAN_STAGE_GET_POV_IMAGE,
   SCAN_STAGE_QUERY_MCU,
-  SCAN_STAGE_CALIBRATE,
-  SCAN_STAGE_SWITCH_TO_FDT_MODE,
+  SCAN_STAGE_RESET_SCANNER,
   SCAN_STAGE_SWITCH_TO_FDT_DOWN,
   SCAN_STAGE_GET_IMG,
-  SCAN_STAGE_SWITCH_TO_FDT_MODE2,
+  SCAN_STAGE_RESET_SCANNER2,
   SCAN_STAGE_SWITCH_TO_FDT_UP_NO_REPLY,
   SCAN_STAGE_SWITCH_TO_FDT_UP,
-  SCAN_STAGE_QUERY_MCU_TRUN_OFF_LIGHT,
+  SCAN_STAGE_QUERY_MCU_TURN_OFF_LIGHT,
   SCAN_STAGE_SWITCH_TO_SLEEP_MODE,
   SCAN_STAGE_SWITCH_TO_FDT_DONE,
   SCAN_STAGE_NUM,
@@ -357,7 +355,6 @@ static unsigned char squash(int v) { return v / 16; }
 
 static void decode_frame(Goodix55X4Pix frame[GOODIX55X4_FRAME_SIZE],
                          const guint8 *raw_frame) {
-
   Goodix55X4Pix uncropped[GOODIX55X4_SCAN_WIDTH * GOODIX55X4_HEIGHT];
   Goodix55X4Pix *pix = uncropped;
   for (int i = 0; i < GOODIX55X4_RAW_FRAME_SIZE; i += 6) {
@@ -433,9 +430,9 @@ static void squash_frame_linear(Goodix55X4Pix *frame, guint8 *squashed) {
  * @param frame
  * @param background
  */
-static gboolean
-postprocess_frame(Goodix55X4Pix frame[GOODIX55X4_FRAME_SIZE],
-                  Goodix55X4Pix background[GOODIX55X4_FRAME_SIZE]) {
+static gboolean postprocess_frame(
+    Goodix55X4Pix frame[GOODIX55X4_FRAME_SIZE],
+    Goodix55X4Pix background[GOODIX55X4_FRAME_SIZE]) {
   int sum = 0;
   for (int i = 0; i != GOODIX55X4_FRAME_SIZE; ++i) {
     Goodix55X4Pix *og_px = frame + i;
@@ -449,8 +446,9 @@ postprocess_frame(Goodix55X4Pix frame[GOODIX55X4_FRAME_SIZE],
     sum += *og_px;
   }
   if (sum == 0) {
-    fp_warn("frame darker than background, finger on scanner during "
-            "calibration?");
+    fp_warn(
+        "frame darker than background, finger on scanner during "
+        "calibration?");
   }
   return sum != 0;
 }
@@ -488,7 +486,7 @@ static void scan_on_read_img(FpDevice *dev, guint8 *data, guint16 len,
   FpiDeviceGoodixTls55X4 *self = FPI_DEVICE_GOODIXTLS55X4(dev);
   save_frame(self, data);
   if (g_slist_length(self->frames) <= GOODIX55X4_CAP_FRAMES) {
-    fpi_ssm_jump_to_state(ssm, SCAN_STAGE_SWITCH_TO_FDT_MODE);
+    fpi_ssm_jump_to_state(ssm, SCAN_STAGE_RESET_SCANNER);
   } else {
     GSList *raw_frames = g_slist_nth(self->frames, 1);
 
@@ -601,12 +599,10 @@ static void on_scan_empty_img(FpDevice *dev, guint8 *data, guint16 length,
   fpi_ssm_next_state(ssm);
 }
 static void scan_empty_run(FpiSsm *ssm, FpDevice *dev) {
-
   switch (fpi_ssm_get_cur_state(ssm)) {
-
-  case SCAN_EMPTY_GET_IMG:
-    goodix_tls_read_image(dev, on_scan_empty_img, ssm);
-    break;
+    case SCAN_EMPTY_GET_IMG:
+      goodix_tls_read_image(dev, on_scan_empty_img, ssm);
+      break;
   }
 }
 
@@ -619,10 +615,8 @@ static void scan_get_img(FpDevice *dev, FpiSsm *ssm) {
 }
 
 const guint8 fdt_switch_state_mode_55X4[] = {
-	0x0d, 0x01, 0x8b, 0x00, 0x84, 0x00, 0x8c, 0x00, 0x88,
-	0x00, 0x80, 0x96, 0x80, 0x91, 0x80, 0x92, 0x80, 0x85,
-	0x80, 0x8c, 0x80, 0x86
-};
+    0x0d, 0x01, 0x8b, 0x00, 0x84, 0x00, 0x8c, 0x00, 0x88, 0x00, 0x80,
+    0x96, 0x80, 0x91, 0x80, 0x92, 0x80, 0x85, 0x80, 0x8c, 0x80, 0x86};
 
 const guint8 fdt_switch_state_mode2_55X4[] = {
     0x0d, 0x01, 0x8b, 0x00, 0x84, 0x00, 0x8c, 0x00, 0x88, 0x00, 0x80,
@@ -633,80 +627,83 @@ const guint8 fdt_switch_state_down_55X4[] = {
     0xb9, 0x80, 0xae, 0x80, 0xb9, 0x80, 0xaf, 0x80, 0xb5, 0x80, 0xaa};
 
 const guint8 fdt_switch_state_up_55X4[] = {
-	0x0e, 0x01, 0x88, 0x00, 0x82, 0x00, 0x89, 0x00, 0x86,
-	0x00, 0x80, 0x9b, 0x80, 0x7f, 0x80, 0x9f, 0x80, 0x8c,
-	0x80, 0x8c, 0x80, 0x88
-};
+    0x0e, 0x01, 0x88, 0x00, 0x82, 0x00, 0x89, 0x00, 0x86, 0x00, 0x80,
+    0x9b, 0x80, 0x7f, 0x80, 0x9f, 0x80, 0x8c, 0x80, 0x8c, 0x80, 0x88};
+
+const guint8 fdt_switch_state_up2_55X4[] = {
+    0x0e, 0x01, 0x8b, 0x00, 0x84, 0x00, 0x8c, 0x00, 0x88, 0x00, 0x80,
+    0x9b, 0x80, 0x8e, 0x80, 0xa2, 0x80, 0x90, 0x80, 0x9f, 0x80, 0xa8};
 
 static void scan_run_state(FpiSsm *ssm, FpDevice *dev) {
   FpImageDevice *img_dev = FP_IMAGE_DEVICE(dev);
   GoodixQueryMcuState payload;
   switch (fpi_ssm_get_cur_state(ssm)) {
-  case SCAN_STAGE_QUERY_MCU:
-    g_print("QUERY MCU\n");
-    payload.unused_flags = 0x00;
-    goodix_send_query_mcu_state(dev, (guint8 *)&payload, sizeof(payload), check_none_cmd, ssm);
-    break;
-  case SCAN_STAGE_CALIBRATE:
-    scan_empty_img(dev, ssm);
-    break;
-  case SCAN_STAGE_SWITCH_TO_FDT_MODE:
-    g_print("SWITCH TO FDT MODE\n");
-    goodix_send_mcu_switch_to_fdt_mode(
-        dev, (guint8 *)fdt_switch_state_mode_55X4,
-        sizeof(fdt_switch_state_mode_55X4), NULL, check_none_cmd, ssm);
-    break;
+    case SCAN_STAGE_QUERY_MCU:
+      g_print("QUERY MCU\n");
+      payload.unused_flags = 0x00;
+      goodix_send_query_mcu_state(dev, (guint8 *)&payload, sizeof(payload),
+                                  check_none_cmd, ssm);
+      break;
+    case SCAN_STAGE_GET_POV_IMAGE:
+      g_print("GET POV IMAGE\n");
+      goodix_send_mcu_get_pov_image(dev, check_mcu_pov_image, ssm);
+      break;
+    case SCAN_STAGE_RESET_SCANNER:
+      g_print("RESET SCANNER\n");
+      goodix_send_mcu_switch_to_fdt_mode(
+          dev, (guint8 *)fdt_switch_state_mode_55X4,
+          sizeof(fdt_switch_state_mode_55X4), NULL, check_none_cmd, ssm);
+      break;
 
-  case SCAN_STAGE_SWITCH_TO_FDT_DOWN:
-    g_print("SWITCH TO FDT DOWN\n");
-    goodix_send_mcu_switch_to_fdt_down(
-        dev, (guint8 *)fdt_switch_state_down_55X4,
-        sizeof(fdt_switch_state_down_55X4), NULL, check_none_cmd, ssm);
-    break;
-  case SCAN_STAGE_GET_IMG:
-    g_print("SWITCH TO GET IMAGE\n");
-    fpi_image_device_report_finger_status(img_dev, TRUE);
-    // Set Sensotr Register first to get valid output
-    // device.write_sensor_register(0x022c, b"\x05\x03")
-    // guint8 payload[] = {0x01, 0x00};
-    // goodix_send_mcu_get_image(dev, check_none_cmd, ssm);
-    // goodix_send_write_sensor_register(dev, 0x022c, payload,
-    // write_sensor_complete, ssm);
-    scan_get_img(dev, ssm);
-    break;
-  case SCAN_STAGE_SWITCH_TO_FDT_MODE2:
-    g_print("SWITCH TO FDT MODE 2\n");
-    goodix_send_mcu_switch_to_fdt_mode(
-        dev, (guint8 *)fdt_switch_state_mode2_55X4,
-        sizeof(fdt_switch_state_mode2_55X4), NULL, check_none_cmd, ssm);
-    break;
-  case SCAN_STAGE_SWITCH_TO_FDT_UP_NO_REPLY:
-    g_print("SWITCH TO FDT UP NO REPLY\n");
-    goodix_send_mcu_switch_to_fdt_up_no_reply(
-        dev, (guint8 *)fdt_switch_state_up_55X4,
-        sizeof(fdt_switch_state_up_55X4), NULL, check_none_cmd, ssm);
-    break;
+    case SCAN_STAGE_SWITCH_TO_FDT_DOWN:
+      g_print("SWITCH TO FDT DOWN\n");
+      goodix_send_mcu_switch_to_fdt_down(
+          dev, (guint8 *)fdt_switch_state_down_55X4,
+          sizeof(fdt_switch_state_down_55X4), NULL, check_none_cmd, ssm);
+      break;
+    case SCAN_STAGE_GET_IMG:
+      g_print("SWITCH TO GET IMAGE\n");
+      fpi_image_device_report_finger_status(img_dev, TRUE);
+      // Set Sensotr Register first to get valid output
+      // device.write_sensor_register(0x022c, b"\x05\x03")
+      // guint8 payload[] = {0x01, 0x00};
+      // goodix_send_mcu_get_image(dev, check_none_cmd, ssm);
+      // goodix_send_write_sensor_register(dev, 0x022c, payload,
+      // write_sensor_complete, ssm);
+      scan_get_img(dev, ssm);
+      break;
+    case SCAN_STAGE_RESET_SCANNER2:
+      g_print("RESET SCANNER\n");
+      goodix_send_mcu_switch_to_fdt_mode(
+          dev, (guint8 *)fdt_switch_state_mode2_55X4,
+          sizeof(fdt_switch_state_mode2_55X4), NULL, check_none_cmd, ssm);
+      break;
+    case SCAN_STAGE_SWITCH_TO_FDT_UP_NO_REPLY:
+      g_print("SWITCH TO FDT UP NO REPLY\n");
+      goodix_send_mcu_switch_to_fdt_up_no_reply(
+          dev, (guint8 *)fdt_switch_state_up_55X4,
+          sizeof(fdt_switch_state_up_55X4), NULL, check_none_cmd, ssm);
+      break;
+    case SCAN_STAGE_SWITCH_TO_FDT_UP:
+      g_print("SWITCH TO FDT UP\n");
+      goodix_send_mcu_switch_to_fdt_up(dev, (guint8 *)fdt_switch_state_up2_55X4,
+                                       sizeof(fdt_switch_state_up_55X4), NULL,
+                                       check_none_cmd, ssm);
+      break;
+    case SCAN_STAGE_SWITCH_TO_SLEEP_MODE:
+      g_print("SWITCH TO SLEEP MODE\n");
+      goodix_send_mcu_switch_to_sleep_mode(dev, 20, check_idle, ssm);
 
-  case SCAN_STAGE_SWITCH_TO_FDT_UP:
-    g_print("SWITCH TO FDT UP\n");
-    goodix_send_mcu_switch_to_fdt_up(dev, (guint8 *)fdt_switch_state_up_55X4,
-                                     sizeof(fdt_switch_state_up_55X4), NULL,
-                                     check_none_cmd, ssm);
-    break;
-  case SCAN_STAGE_SWITCH_TO_SLEEP_MODE:
-    g_print("SWITCH TO SLEEP MODE\n");
-    goodix_send_mcu_switch_to_sleep_mode(dev, 20, check_idle, ssm);
+      break;
+    case SCAN_STAGE_SWITCH_TO_FDT_DONE:
+      fpi_image_device_report_finger_status(img_dev, FALSE);
+      break;
 
-    break;
-  case SCAN_STAGE_SWITCH_TO_FDT_DONE:
-    fpi_image_device_report_finger_status(img_dev, FALSE);
-    break;
-
-  case SCAN_STAGE_QUERY_MCU_TRUN_OFF_LIGHT:
-    payload.unused_flags = 0x01;
-    goodix_send_query_mcu_state(dev, (guint8 *)&payload, sizeof(payload), check_none_cmd, ssm);
-    break;
-	
+    case SCAN_STAGE_QUERY_MCU_TURN_OFF_LIGHT:
+      payload.unused_flags = 0x01;
+      goodix_send_query_mcu_state(dev, (guint8 *)&payload, sizeof(payload),
+                                  check_none_cmd, ssm);
+      break;
   }
 }
 
@@ -795,8 +792,8 @@ static void fpi_device_goodixtls55x4_init(FpiDeviceGoodixTls55X4 *self) {
   self->frames = g_slist_alloc();
 }
 
-static void
-fpi_device_goodixtls55x4_class_init(FpiDeviceGoodixTls55X4Class *class) {
+static void fpi_device_goodixtls55x4_class_init(
+    FpiDeviceGoodixTls55X4Class *class) {
   FpiDeviceGoodixTlsClass *gx_class = FPI_DEVICE_GOODIXTLS_CLASS(class);
   FpDeviceClass *dev_class = FP_DEVICE_CLASS(class);
   FpImageDeviceClass *img_dev_class = FP_IMAGE_DEVICE_CLASS(class);
@@ -814,7 +811,7 @@ fpi_device_goodixtls55x4_class_init(FpiDeviceGoodixTls55X4Class *class) {
 
   // TODO
   img_dev_class->bz3_threshold = 10;
-  //img_dev_class->algorithm = FPI_DEVICE_ALGO_SIGFM;
+  // img_dev_class->algorithm = FPI_DEVICE_ALGO_SIGFM;
   img_dev_class->img_width = GOODIX55X4_WIDTH;
   img_dev_class->img_height = GOODIX55X4_HEIGHT;
 
