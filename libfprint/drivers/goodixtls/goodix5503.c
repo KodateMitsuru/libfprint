@@ -78,6 +78,8 @@ enum activate_states {
   ACTIVATE_NOP,
   ACTIVATE_CHECK_FW_VER,
   ACTIVATE_CHECK_PSK,
+  ACTIVATE_UPDATE_PSK,
+  ACTIVATE_CHECK_PSK2,
   ACTIVATE_RESET,
   ACTIVATE_SET_MCU_IDLE,
   ACTIVATE_SET_MCU_CONFIG,
@@ -86,6 +88,23 @@ enum activate_states {
 
 static void check_none(FpDevice *dev, gpointer user_data, GError *error) {
   if (error) {
+    fpi_ssm_mark_failed(user_data, error);
+    return;
+  }
+
+  fpi_ssm_next_state(user_data);
+}
+
+static void check_preset_psk_write(FpDevice *dev, gboolean success,
+                                  gpointer user_data, GError *error) {
+  if (error) {
+    fpi_ssm_mark_failed(user_data, error);
+    return;
+  }
+
+  if (!success) {
+    g_set_error(&error, G_IO_ERROR, G_IO_ERROR_FAILED,
+                "Operation failed");
     fpi_ssm_mark_failed(user_data, error);
     return;
   }
@@ -168,20 +187,29 @@ static void check_preset_psk_read(FpDevice *dev, gboolean success,
   }
 
   if (length != sizeof(goodix_5503_psk_0)) {
-    g_set_error(&error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA,
-                "Invalid device PSK: 0x%s", psk_str);
-    fpi_ssm_mark_failed(user_data, error);
+    if (fpi_ssm_get_cur_state(user_data) == ACTIVATE_CHECK_PSK) {
+      fpi_ssm_next_state(user_data);
+    } else {
+      g_set_error(&error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA,
+                  "Invalid device PSK: 0x%s", psk_str);
+      fpi_ssm_mark_failed(user_data, error);
+    }
     return;
   }
 
   if (memcmp(psk, goodix_5503_psk_0, sizeof(goodix_5503_psk_0))) {
-    g_set_error(&error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA,
-                "Invalid device PSK: 0x%s", psk_str);
-    fpi_ssm_mark_failed(user_data, error);
+    if (fpi_ssm_get_cur_state(user_data) == ACTIVATE_CHECK_PSK) {
+      fpi_ssm_next_state(user_data);
+    } else {
+      g_set_error(&error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA,
+                  "Invalid device PSK: 0x%s", psk_str);
+      fpi_ssm_mark_failed(user_data, error);
+    }
     return;
   }
 
-  fpi_ssm_next_state(user_data);
+  fpi_ssm_jump_to_state(user_data, ACTIVATE_RESET);
+
 }
 static void check_idle(FpDevice *dev, gpointer user_data, GError *err) {
   if (err) {
@@ -258,6 +286,19 @@ static void activate_run_state(FpiSsm *ssm, FpDevice *dev) {
       goodix_send_preset_psk_read(dev, GOODIX_5503_PSK_FLAGS, 32,
                                   check_preset_psk_read, ssm);
       break;
+    case ACTIVATE_UPDATE_PSK:
+      g_print("Updating PSK\n");
+      g_print("Device PSK length is not correct, updating to: 0x%s\n",
+              data_to_str(goodix_5503_psk_0_whitebox, sizeof(goodix_5503_psk_0_whitebox)));
+      goodix_send_preset_psk_write(
+          dev, GOODIX_5503_PSK_WHITEBOX_FLAGS, goodix_5503_psk_0_whitebox,
+          sizeof(goodix_5503_psk_0_whitebox), NULL, check_preset_psk_write, ssm);
+      break;
+    case ACTIVATE_CHECK_PSK2:
+      g_print("Checking PSK Again\n");
+      goodix_send_preset_psk_read(dev, GOODIX_5503_PSK_FLAGS, 32,
+                                  check_preset_psk_read, ssm);
+      break;
 
     case ACTIVATE_RESET:
       g_print("Reset Device\n");
@@ -319,8 +360,8 @@ static void activate_complete(FpiSsm *ssm, FpDevice *dev, GError *error) {
 // ---- SCAN SECTION START ----
 
 enum SCAN_STAGES {
-  SCAN_STAGE_RESET_SCANNER,
   SCAN_STAGE_QUERY_MCU,
+  SCAN_STAGE_RESET_SCANNER,
   SCAN_STAGE_SWITCH_TO_FDT_DOWN,
   SCAN_STAGE_GET_IMG,
   SCAN_STAGE_RESET_SCANNER2,

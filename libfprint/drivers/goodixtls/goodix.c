@@ -1065,13 +1065,13 @@ void goodix_send_preset_psk_write(FpDevice *dev, guint32 flags, guint8 *psk,
                                   gpointer user_data) {
   // Only support one flags, one payload and one length
 
-  guint8 *payload = g_malloc(sizeof(GoodixPresetPsk) + length);
-  GoodixPresetPsk *preset_psk = (GoodixPresetPsk *)payload;
+  guint8 *payload = g_malloc(sizeof(GoodixPresetWritePsk) + length);
+  GoodixPresetWritePsk *preset_psk = (GoodixPresetWritePsk *)payload;
   GoodixCallbackInfo *cb_info;
 
   preset_psk->flags = GUINT32_TO_LE(flags);
   preset_psk->length = GUINT32_TO_LE(length);
-  memcpy(payload + sizeof(GoodixPresetPsk), psk, length);
+  memcpy(payload + sizeof(GoodixPresetWritePsk), psk, length);
   if (free_func) free_func(psk);
 
   if (callback) {
