@@ -143,8 +143,8 @@ driver_sources = {
         [ 'drivers/fpcmoc/fpc.c' ],
     'goodixtls511' :
         [ 'drivers/goodixtls/goodix511.c' ],
-    'goodixtls55x4' :
-        [ 'drivers/goodixtls/goodix55x4.c' ],
+    'goodixtls5503' :
+        [ 'drivers/goodixtls/goodix5503.c' ],
 }
 
 helper_sources = {
@@ -270,8 +270,8 @@ foreach driver: drivers
     if driver == 'goodixtls511'
     drivers_sources += ['drivers/goodixtls/goodix_proto.c', 'drivers/goodixtls/goodix.c', 'drivers/goodixtls/goodix511.c', 'drivers/goodixtls/goodixtls.c']
     endif
-    if driver == 'goodixtls55x4'
-    drivers_sources += ['drivers/goodixtls/goodix_proto.c', 'drivers/goodixtls/goodix.c', 'drivers/goodixtls/goodix55x4.c', 'drivers/goodixtls/goodixtls.c']
+    if driver == 'goodixtls5503'
+    drivers_sources += ['drivers/goodixtls/goodix_proto.c', 'drivers/goodixtls/goodix.c', 'drivers/goodixtls/goodix5503.c', 'drivers/goodixtls/goodixtls.c']
     endif
 endforeach
 
