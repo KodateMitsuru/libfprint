@@ -800,7 +800,7 @@ static void fpi_device_goodixtls55x4_class_init(
   dev_class->full_name = "Goodix TLS Fingerprint Sensor 55X4";
   dev_class->type = FP_DEVICE_TYPE_USB;
   dev_class->id_table = id_table;
-  dev_class->nr_enroll_stages = 40; // due to hardware limitations，we set it to 40
+  dev_class->nr_enroll_stages = 15; // due to hardware limitations，we set it to 15
   dev_class->scan_type = FP_SCAN_TYPE_PRESS;
 
   // TODO
