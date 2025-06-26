@@ -136,6 +136,7 @@ int sigfm_match_score(SigfmImgInfo* frame, SigfmImgInfo* enrolled)
         bfm->knnMatch(frame->descriptors, enrolled->descriptors, points, 2);
         std::set<match> matches_unique;
         int nb_matched = 0;
+        std::cout << "Matching " << points.size() << " keypoints\n";
         for (const auto& pts : points) {
             if (pts.size() < 2) {
                 continue;

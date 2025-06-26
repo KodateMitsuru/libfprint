@@ -319,12 +319,10 @@ static void activate_complete(FpiSsm *ssm, FpDevice *dev, GError *error) {
 // ---- SCAN SECTION START ----
 
 enum SCAN_STAGES {
-  SCAN_STAGE_GET_POV_IMAGE,
   SCAN_STAGE_QUERY_MCU,
   SCAN_STAGE_RESET_SCANNER,
   SCAN_STAGE_SWITCH_TO_FDT_DOWN,
   SCAN_STAGE_GET_IMG,
-  SCAN_STAGE_RESET_SCANNER2,
   SCAN_STAGE_SWITCH_TO_FDT_UP_NO_REPLY,
   SCAN_STAGE_SWITCH_TO_FDT_UP,
   SCAN_STAGE_SWITCH_TO_IDLE_MODE,
@@ -645,10 +643,6 @@ static void scan_run_state(FpiSsm *ssm, FpDevice *dev) {
       goodix_send_query_mcu_state(dev, (guint8 *)&payload, sizeof(payload),
                                   check_none_cmd, ssm);
       break;
-    case SCAN_STAGE_GET_POV_IMAGE:
-      g_print("GET POV IMAGE\n");
-      goodix_send_mcu_get_pov_image(dev, check_mcu_pov_image, ssm);
-      break;
     case SCAN_STAGE_RESET_SCANNER:
       g_print("RESET SCANNER\n");
       goodix_send_mcu_switch_to_fdt_mode(
@@ -673,12 +667,7 @@ static void scan_run_state(FpiSsm *ssm, FpDevice *dev) {
       // write_sensor_complete, ssm);
       scan_get_img(dev, ssm);
       break;
-    case SCAN_STAGE_RESET_SCANNER2:
-      g_print("RESET SCANNER\n");
-      goodix_send_mcu_switch_to_fdt_mode(
-          dev, (guint8 *)fdt_switch_state_mode2_55X4,
-          sizeof(fdt_switch_state_mode2_55X4), NULL, check_none_cmd, ssm);
-      break;
+
     case SCAN_STAGE_SWITCH_TO_FDT_UP_NO_REPLY:
       g_print("SWITCH TO FDT UP NO REPLY\n");
       goodix_send_mcu_switch_to_fdt_up_no_reply(
@@ -816,7 +805,7 @@ static void fpi_device_goodixtls55x4_class_init(
 
   // TODO
   img_dev_class->bz3_threshold = 10;
-  // img_dev_class->algorithm = FPI_DEVICE_ALGO_SIGFM;
+  img_dev_class->algorithm = FPI_DEVICE_ALGO_SIGFM;
   img_dev_class->img_width = GOODIX55X4_WIDTH;
   img_dev_class->img_height = GOODIX55X4_HEIGHT;
 
