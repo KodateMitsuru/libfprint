@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "goodixtls.h"
 #include "fp-device.h"
 #include "fp-image-device.h"
 #include "fp-image.h"
@@ -163,7 +164,9 @@ static void check_preset_psk_read(FpDevice *dev, gboolean success,
                                   guint32 flags, guint8 *psk, guint16 length,
                                   gpointer user_data, GError *error) {
   g_autofree gchar *psk_str = data_to_str(psk, length);
-
+  guint16 pmk_length = 0;
+  g_autofree guint8 *goodix_5503_psk_0 = g_malloc(32);
+  goodix_derive_pmk_hash(goodix_5503_psk, length, goodix_5503_psk_0, &pmk_length, &error);
   if (error) {
     fpi_ssm_mark_failed(user_data, error);
     return;
@@ -186,7 +189,7 @@ static void check_preset_psk_read(FpDevice *dev, gboolean success,
     return;
   }
 
-  if (length != sizeof(goodix_5503_psk_0)) {
+  if (length != pmk_length) {
     if (fpi_ssm_get_cur_state(user_data) == ACTIVATE_CHECK_PSK) {
       fpi_ssm_next_state(user_data);
     } else {
@@ -197,7 +200,7 @@ static void check_preset_psk_read(FpDevice *dev, gboolean success,
     return;
   }
 
-  if (memcmp(psk, goodix_5503_psk_0, sizeof(goodix_5503_psk_0))) {
+  if (memcmp(psk, goodix_5503_psk_0, pmk_length)) {
     if (fpi_ssm_get_cur_state(user_data) == ACTIVATE_CHECK_PSK) {
       fpi_ssm_next_state(user_data);
     } else {
@@ -288,11 +291,9 @@ static void activate_run_state(FpiSsm *ssm, FpDevice *dev) {
       break;
     case ACTIVATE_UPDATE_PSK:
       g_print("Updating PSK\n");
-      g_print("Device PSK length is not correct, updating to: 0x%s\n",
-              data_to_str(goodix_5503_psk_0_whitebox, sizeof(goodix_5503_psk_0_whitebox)));
       goodix_send_preset_psk_write(
-          dev, GOODIX_5503_PSK_WHITEBOX_FLAGS, goodix_5503_psk_0_whitebox,
-          sizeof(goodix_5503_psk_0_whitebox), NULL, check_preset_psk_write, ssm);
+          dev, GOODIX_5503_PSK_WHITEBOX_FLAGS, goodix_5503_psk,
+          sizeof(goodix_5503_psk), NULL, check_preset_psk_write, ssm);
       break;
     case ACTIVATE_CHECK_PSK2:
       g_print("Checking PSK Again\n");

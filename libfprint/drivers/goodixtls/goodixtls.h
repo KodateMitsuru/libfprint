@@ -20,7 +20,7 @@
 #pragma once
 
 #include <glib.h>
-
+#include <openssl/ssl.h>
 #include <stdatomic.h>
 
 #define GOODIX_TLS_SERVER_PORT 4433
@@ -100,6 +100,14 @@ int goodix_tls_client_send (GoodixTlsServer *self,
 int goodix_tls_client_recv (GoodixTlsServer *self,
                             guint8          *data,
                             guint16          length);
+
+gboolean goodix_derive_whitebox(const guint8 *psk, guint16 length,
+                                guint8 *psk_wb, guint16 *psk_wb_length,
+                                GError **error);
+
+gboolean goodix_derive_pmk_hash(const guint8 *psk, guint16 length,
+                                guint8 *pmk_hash, guint16 *pmk_hash_length,
+                                GError **error);
 
 // This is called only once to deinit the TLS server.
 // Return TRUE on success, FALSE otherwise and error should be set.
