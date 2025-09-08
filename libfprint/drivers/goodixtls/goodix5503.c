@@ -22,7 +22,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "goodixtls.h"
 #include "fp-device.h"
 #include "fp-image-device.h"
 #include "fp-image.h"
@@ -79,8 +78,6 @@ enum activate_states {
   ACTIVATE_NOP,
   ACTIVATE_CHECK_FW_VER,
   ACTIVATE_CHECK_PSK,
-  ACTIVATE_UPDATE_PSK,
-  ACTIVATE_CHECK_PSK2,
   ACTIVATE_RESET,
   ACTIVATE_SET_MCU_IDLE,
   ACTIVATE_SET_MCU_CONFIG,
@@ -89,23 +86,6 @@ enum activate_states {
 
 static void check_none(FpDevice *dev, gpointer user_data, GError *error) {
   if (error) {
-    fpi_ssm_mark_failed(user_data, error);
-    return;
-  }
-
-  fpi_ssm_next_state(user_data);
-}
-
-static void check_preset_psk_write(FpDevice *dev, gboolean success,
-                                  gpointer user_data, GError *error) {
-  if (error) {
-    fpi_ssm_mark_failed(user_data, error);
-    return;
-  }
-
-  if (!success) {
-    g_set_error(&error, G_IO_ERROR, G_IO_ERROR_FAILED,
-                "Operation failed");
     fpi_ssm_mark_failed(user_data, error);
     return;
   }
@@ -164,9 +144,7 @@ static void check_preset_psk_read(FpDevice *dev, gboolean success,
                                   guint32 flags, guint8 *psk, guint16 length,
                                   gpointer user_data, GError *error) {
   g_autofree gchar *psk_str = data_to_str(psk, length);
-  guint16 pmk_length = 0;
-  g_autofree guint8 *goodix_5503_psk_0 = g_malloc(32);
-  goodix_derive_pmk_hash(goodix_5503_psk, length, goodix_5503_psk_0, &pmk_length, &error);
+
   if (error) {
     fpi_ssm_mark_failed(user_data, error);
     return;
@@ -189,30 +167,21 @@ static void check_preset_psk_read(FpDevice *dev, gboolean success,
     return;
   }
 
-  if (length != pmk_length) {
-    if (fpi_ssm_get_cur_state(user_data) == ACTIVATE_CHECK_PSK) {
-      fpi_ssm_next_state(user_data);
-    } else {
-      g_set_error(&error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA,
-                  "Invalid device PSK: 0x%s", psk_str);
-      fpi_ssm_mark_failed(user_data, error);
-    }
+  if (length != sizeof(goodix_5503_psk_0)) {
+    g_set_error(&error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA,
+                "Invalid device PSK: 0x%s", psk_str);
+    fpi_ssm_mark_failed(user_data, error);
     return;
   }
 
-  if (memcmp(psk, goodix_5503_psk_0, pmk_length)) {
-    if (fpi_ssm_get_cur_state(user_data) == ACTIVATE_CHECK_PSK) {
-      fpi_ssm_next_state(user_data);
-    } else {
-      g_set_error(&error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA,
-                  "Invalid device PSK: 0x%s", psk_str);
-      fpi_ssm_mark_failed(user_data, error);
-    }
+  if (memcmp(psk, goodix_5503_psk_0, sizeof(goodix_5503_psk_0))) {
+    g_set_error(&error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA,
+                "Invalid device PSK: 0x%s", psk_str);
+    fpi_ssm_mark_failed(user_data, error);
     return;
   }
 
-  fpi_ssm_jump_to_state(user_data, ACTIVATE_RESET);
-
+  fpi_ssm_next_state(user_data);
 }
 static void check_idle(FpDevice *dev, gpointer user_data, GError *err) {
   if (err) {
@@ -289,17 +258,6 @@ static void activate_run_state(FpiSsm *ssm, FpDevice *dev) {
       goodix_send_preset_psk_read(dev, GOODIX_5503_PSK_FLAGS, 32,
                                   check_preset_psk_read, ssm);
       break;
-    case ACTIVATE_UPDATE_PSK:
-      g_print("Updating PSK\n");
-      goodix_send_preset_psk_write(
-          dev, GOODIX_5503_PSK_WHITEBOX_FLAGS, goodix_5503_psk,
-          sizeof(goodix_5503_psk), NULL, check_preset_psk_write, ssm);
-      break;
-    case ACTIVATE_CHECK_PSK2:
-      g_print("Checking PSK Again\n");
-      goodix_send_preset_psk_read(dev, GOODIX_5503_PSK_FLAGS, 32,
-                                  check_preset_psk_read, ssm);
-      break;
 
     case ACTIVATE_RESET:
       g_print("Reset Device\n");
@@ -361,8 +319,8 @@ static void activate_complete(FpiSsm *ssm, FpDevice *dev, GError *error) {
 // ---- SCAN SECTION START ----
 
 enum SCAN_STAGES {
-  SCAN_STAGE_QUERY_MCU,
   SCAN_STAGE_RESET_SCANNER,
+  SCAN_STAGE_QUERY_MCU,
   SCAN_STAGE_SWITCH_TO_FDT_DOWN,
   SCAN_STAGE_GET_IMG,
   SCAN_STAGE_RESET_SCANNER2,
@@ -839,11 +797,6 @@ static void dev_deactivate(FpImageDevice *img_dev) {
   FpDevice *dev = FP_DEVICE(img_dev);
   goodix_reset_state(dev);
   GError *error = NULL;
-  GoodixQueryMcuState payload = {0};
-  goodix_send_protocol(dev, GOODIX_CMD_QUERY_MCU_STATE, (guint8 *)&payload,
-                       sizeof(payload), NULL, TRUE, GOODIX_TIMEOUT, TRUE, NULL,
-                       NULL);
-  goodix_send_mcu_switch_to_idle_mode(dev, 20, NULL, NULL);
   goodix_shutdown_tls(dev, &error);
   goodix5503_reset_state(FPI_DEVICE_GOODIXTLS5503(img_dev));
   fpi_image_device_deactivate_complete(img_dev, error);

@@ -144,12 +144,6 @@ typedef struct __attribute__((__packed__)) _GoodixPresetPsk {
   guint32 offset;
 } GoodixPresetPsk;
 
-typedef struct __attribute__((__packed__)) _GoodixPresetWritePsk {
-  guint32 flags;
-  guint32 length;
-  // guint32 offset;
-} GoodixPresetWritePsk;
-
 typedef struct __attribute__((__packed__)) _GoodixPresetPskResp {
   guint32 flags;
   guint32 length;
