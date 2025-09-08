@@ -839,6 +839,11 @@ static void dev_deactivate(FpImageDevice *img_dev) {
   FpDevice *dev = FP_DEVICE(img_dev);
   goodix_reset_state(dev);
   GError *error = NULL;
+  GoodixQueryMcuState payload = {0};
+  goodix_send_protocol(dev, GOODIX_CMD_QUERY_MCU_STATE, (guint8 *)&payload,
+                       sizeof(payload), NULL, TRUE, GOODIX_TIMEOUT, TRUE, NULL,
+                       NULL);
+  goodix_send_mcu_switch_to_idle_mode(dev, 20, NULL, NULL);
   goodix_shutdown_tls(dev, &error);
   goodix5503_reset_state(FPI_DEVICE_GOODIXTLS5503(img_dev));
   fpi_image_device_deactivate_complete(img_dev, error);
